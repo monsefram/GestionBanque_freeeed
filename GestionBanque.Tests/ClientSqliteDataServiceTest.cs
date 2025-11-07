@@ -1,36 +1,55 @@
-﻿
+﻿using GestionBanque.Models;
 using GestionBanque.Models.DataService;
-using GestionBanque.Models;
 
 namespace GestionBanque.Tests
 {
-    // Ce décorateur s'assure que toutes les classes de tests ayant le tag "Dataservice" soit
-    // exécutées séquentiellement. Par défaut, xUnit exécute les différentes suites de tests
-    // en parallèle. Toutefois, si nous voulons forcer l'exécution séquentielle entre certaines
-    // suites, nous pouvons utiliser un décorateur avec un nom unique. Pour les tests sur les DataService,
-    // il est important que cela soit séquentiel afin d'éviter qu'un test d'une classe supprime la 
-    // bd de tests pendant qu'un test d'une autre classe utilise la bd. Bref, c'est pour éviter un
-    // accès concurrent à la BD de tests!
     [Collection("Dataservice")]
     public class ClientSqliteDataServiceTest
     {
-        private const string CheminBd = "test.bd";
+        private const string CheminBd = "Resources.bd";
 
         [Fact]
         [AvantApresDataService(CheminBd)]
-        public void Get_ShouldBeValid()
+        public void GetAll_ShouldReturnValidClients()
         {
-            // Préparation
             ClientSqliteDataService ds = new ClientSqliteDataService(CheminBd);
-            Client clientAttendu = new Client(1, "Amar", "Quentin", "quentin@gmail.com");
-            clientAttendu.Comptes.Add(new Compte(1, "9864", 831.76, 1));
-            clientAttendu.Comptes.Add(new Compte(2, "2370", 493.04, 1));
 
-            // Exécution
-            Client? clientActuel = ds.Get(1);
+            var clients = ds.GetAll().ToList();
 
-            // Affirmation
-            Assert.Equal(clientAttendu, clientActuel);
+            Assert.Equal(3, clients.Count);
+
+            Assert.Equal("Amar", clients[0].Nom);
+            Assert.Equal("Quentin", clients[0].Prenom);
+        }
+
+        [Fact]
+        [AvantApresDataService(CheminBd)]
+        public void RecupererComptes_ShouldReturnAssociatedAccounts()
+        {
+            ClientSqliteDataService ds = new ClientSqliteDataService(CheminBd);
+            Client client = new Client(1, "Amar", "Quentin", "quentin@gmail.com");
+
+            ds.RecupererComptes(client);
+
+            Assert.Equal(2, client.Comptes.Count);
+            Assert.Contains(client.Comptes, c => c.NoCompte == "9864");
+            Assert.Contains(client.Comptes, c => c.NoCompte == "2370");
+        }
+
+        [Fact]
+        [AvantApresDataService(CheminBd)]
+        public void Update_ShouldModifyClient_WhenValid()
+        {
+            ClientSqliteDataService ds = new ClientSqliteDataService(CheminBd);
+            Client client = ds.Get(1)!;
+            client.Nom = "Durand";
+            client.Courriel = "durand@gmail.com";
+            bool resultat = ds.Update(client);
+
+            Assert.True(resultat);
+            Client clientApres = ds.Get(1)!;
+            Assert.Equal("Durand", clientApres.Nom);
+            Assert.Equal("durand@gmail.com", clientApres.Courriel);
         }
     }
 }
